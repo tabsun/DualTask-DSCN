@@ -6,7 +6,7 @@ import torch.nn.functional as F
 from sklearn.metrics import confusion_matrix
 from tqdm import tqdm
 from tensorboardX import SummaryWriter
-from visualize import visualize2
+from visualize import visualize1
 import numpy as np
 
 class Tester(object):
@@ -32,8 +32,12 @@ class Tester(object):
                 image_A, image_B, change_mask_A, change_mask_B = image_A.cuda(), image_B.cuda(), change_mask_A.cuda(), change_mask_B.cuda()
                 seg_A1, seg_B1, output_A = self.model(image_A, image_B)
                 seg_B2, seg_A2, output_B = self.model(image_B, image_A)
-                visualize(image_A, image_B, change_mask_A, output_A)
-                visualize(image_B, image_A, change_mask_B, output_B)
+                show_images_A = visualize1(image_A, image_B, change_mask_A, output_A)
+                show_images_B = visualize1(image_B, image_A, change_mask_B, output_B)
+                for i, image in enumerate(show_images_A):
+                    cv2.imwrite('visualize/%03d_A.png' % (iteration_step*4+i), image)
+                for i, image in enumerate(show_images_B):
+                    cv2.imwrite('visualize/%03d_B.png' % (iteration_step*4+i), image)
                 iteration_step += 1
 
                 output_A = output_A.cpu().data.numpy().reshape(-1)

@@ -6,6 +6,15 @@ def convert2image(image):
     image = (image * 255.).astype(np.uint8)
     return image
 
+def convert2rgb(image):
+    h, w, c = image.shape
+    assert(c == 1)
+    temp = np.zeros((h, w, 3), dtype=np.uint8)
+    temp[:,:,0] = image.reshape(h,w)
+    temp[:,:,1] = image.reshape(h,w)
+    temp[:,:,2] = image.reshape(h,w)
+    return temp
+
 def visualize2(image_A, image_B, mask_A, mask_B, change_mask, names):
     image_A = image_A.numpy()
     image_B = image_B.numpy()
@@ -27,26 +36,30 @@ def visualize2(image_A, image_B, mask_A, mask_B, change_mask, names):
         else:
             print(i, np.max(temp))
 
-def visualize1(image_A, image_B, output):
-    b, c, h, w = image_A.shape
-    assert(b == 1)
+def visualize1(image_A_batch, image_B_batch, gt_batch, pd_batch):
+    image_A_batch = image_A_batch.cpu().numpy()
+    image_B_batch = image_B_batch.cpu().numpy()
+    gt_batch = gt_batch.cpu().numpy()
+    pd_batch = pd_batch.cpu().numpy()
+
     std_size = 512
-    image_A = convert2image(image_A.reshape(c, h, w))
-    image_B = convert2image(image_B.reshape(c, h, w))
-    image_A = (image_A * 255.).astype(np.uint8)
-    image_B = (image_B * 255.).astype(np.uint8)
-    image_A = cv2.resize(image_A, (std_size, std_size))
-    image_B = cv2.resize(image_B, (std_size, std_size))
+    whole_images = []
+    for i in range(image_A_batch.shape[0]):
+        image_A = image_A_batch[i]
+        image_B = image_B_batch[i]
+        gt = gt_batch[i]
+        pd = pd_batch[i]
+        image_A = cv2.resize(convert2image(image_A), (std_size, std_size))
+        image_B = cv2.resize(convert2image(image_B), (std_size, std_size))
+        gt = cv2.resize(convert2rgb(convert2image(gt)), (std_size, std_size))
+        pd = cv2.resize(convert2rgb(convert2image(pd)), (std_size, std_size))
 
-    output = output.reshape(2, h, w)
-    print("Output:", np.min(output), np.max(output))
-    mask = np.zeros((h, w, 3), dtype=np.uint8)
-    mask[:, :, 0][output[0,:,:] > 0] = 255
-    mask[:, :, 2][output[1,:,:] > 0] = 255
-    mask = cv2.resize(mask, (std_size, std_size))
+        whole = np.zeros((std_size*2, std_size*2, 3), dtype=np.uint8)
+        whole[:std_size, :std_size, :] = image_A
+        whole[:std_size, std_size:, :] = image_B
+        whole[std_size:, :std_size, :] = gt
+        whole[std_size:, std_size:, :] = pd
 
-    image = np.zeros((std_size, 3*std_size, 3), dtype=np.uint8)
-    image[:, :std_size, :] = image_A
-    image[:, std_size:std_size*2, :] = image_B
-    image[:, 2*std_size:, :] = mask
-    return image
+        whole_images.append(whole)
+
+    return whole_images
